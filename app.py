@@ -1,6 +1,6 @@
 import streamlit as st
 from supabase import create_client
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 st.set_page_config(page_title="Sales Dossier Tool", layout="wide")
 
@@ -92,15 +92,30 @@ def save_dossier(acc_id, dossier, stakeholders, messages, business_scan):
     db.table("accounts").update({"updated_at": now_iso()}).eq("id", acc_id).execute()
 
 def add_note(acc_id, note_date, content):
+    def update_note(note_id, new_content, new_note_date=None):
+    payload = {"content": new_content}
+    if new_note_date is not None:
+        payload["note_date"] = str(new_note_date)
+    db.table("notes").update(payload).eq("id", note_id).execute()
+
+def delete_note(note_id):
+    db.table("notes").delete().eq("id", note_id).execute()
+
     db.table("notes").insert({
         "account_id": acc_id,
         "note_date": str(note_date),
-        "content": content
+        "content": content,
+        "created_at": datetime.now(timezone.utc).isoformat()
     }).execute()
     db.table("accounts").update({"updated_at": now_iso()}).eq("id", acc_id).execute()
 
-def get_notes(acc_id, limit=20):
-    res = db.table("notes").select("*").eq("account_id", acc_id).order("created_at", desc=True).limit(limit).execute()
+def get_notes(acc_id, limit=50):
+    res = (db.table("notes")
+           .select("*")
+           .eq("account_id", acc_id)
+           .order("created_at", desc=True)
+           .limit(limit)
+           .execute())
     return res.data or []
 
 def add_case(title, industry, tags, content):
@@ -334,9 +349,44 @@ with c1:
         else:
             st.warning("Note is empty.")
 
-    st.markdown("#### Recent notes")
-    for n in notes[:10]:
-        st.markdown(f"**{n['note_date']}** — {n['content'][:180]}{'…' if len(n['content'])>180 else ''}")
+    st.markdown("#### Notes log")
+for n in notes[:20]:
+    created = n.get("created_at", "")
+    created_short = created.replace("T", " ")[:16] if created else ""
+    header = f"{n['note_date']}  ·  {created_short}"
+
+    with st.expander(f"{header} — {n['content'][:60]}{'…' if len(n['content'])>60 else ''}", expanded=False):
+        st.write(n["content"])
+
+        edit_key = f"edit_{n['id']}"
+        if edit_key not in st.session_state:
+            st.session_state[edit_key] = False
+
+        c_edit, c_del = st.columns([1, 1])
+
+        if c_edit.button("Edit", key=f"btn_edit_{n['id']}"):
+            st.session_state[edit_key] = True
+
+        if c_del.button("Delete", key=f"btn_del_{n['id']}"):
+            delete_note(n["id"])
+            st.success("Note deleted.")
+            st.rerun()
+
+        if st.session_state[edit_key]:
+            new_date = st.date_input("Note date", value=date.fromisoformat(n["note_date"]), key=f"nd_{n['id']}")
+            new_text = st.text_area("Edit note", value=n["content"], height=140, key=f"nt_{n['id']}")
+            c_save, c_cancel = st.columns([1, 1])
+
+            if c_save.button("Save changes", key=f"btn_save_{n['id']}"):
+                update_note(n["id"], new_text.strip(), new_date)
+                st.session_state[edit_key] = False
+                st.success("Note updated.")
+                st.rerun()
+
+            if c_cancel.button("Cancel", key=f"btn_cancel_{n['id']}"):
+                st.session_state[edit_key] = False
+                st.rerun()
+
 
 with c2:
     st.markdown("### Workspace")
