@@ -424,8 +424,7 @@ with middle:
         linked_ids = {c["id"] for c in linked_cases}
     
     with tabs[5]:
-        with tabs[5]:
-    st.subheader("Notes")
+        st.subheader("Notes")
 
     # Add note (boven)
     top_l, top_r = st.columns([1, 1])
