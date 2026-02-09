@@ -91,10 +91,12 @@ def save_dossier(acc_id, dossier, stakeholders, messages, business_scan):
     }).eq("account_id", acc_id).execute()
     db.table("accounts").update({"updated_at": now_iso()}).eq("id", acc_id).execute()
 
-def add_note(acc_id, note_date, content):
+def add_note(acc_id, note_date, note_type, stage, content):
     db.table("notes").insert({
         "account_id": acc_id,
         "note_date": str(note_date),
+        "note_type": note_type,
+        "stage": stage,
         "content": content,
         "created_at": datetime.now(timezone.utc).isoformat()
     }).execute()
@@ -352,10 +354,14 @@ c1, c2 = st.columns([1, 1])
 with c1:
     st.markdown("### Notes")
     note_date = st.date_input("Note date", value=date.today())
-    note_text = st.text_area("Paste LinkedIn snippets / meeting notes here", height=180)
+note_type = st.selectbox("Type", ["LinkedIn", "Email", "Call", "Meeting", "Internal", "Note"])
+stage = st.selectbox("Stage", ["New", "Outreach", "Engaged", "Meeting", "Proposal", "Won", "Lost"])
+note_text = st.text_area("Paste LinkedIn snippets / meeting notes here", height=180)
+
     if st.button("Add note"):
         if note_text.strip():
-            add_note(acc_id, note_date, note_text.strip())
+            add_note(acc_id, note_date, note_type, stage, note_text.strip())
+
             st.success("Note added.")
             st.rerun()
         else:
@@ -372,7 +378,10 @@ with c1:
         else:
             created_short = ""
 
-        header = f"{n['note_date']}  ·  {created_short}"
+        nt = n.get("note_type", "Note")
+stg = n.get("stage", "")
+header = f"{n['note_date']}  ·  {created_short}  ·  {nt}  ·  {stg}"
+
 
         with st.expander(
             f"{header} — {n['content'][:60]}{'…' if len(n['content'])>60 else ''}",
@@ -400,6 +409,23 @@ with c1:
                     value=date.fromisoformat(n["note_date"]),
                     key=f"nd_{n['id']}"
                 )
+                new_type = st.selectbox(
+    "Type",
+    ["LinkedIn", "Email", "Call", "Meeting", "Internal", "Note"],
+    index=["LinkedIn","Email","Call","Meeting","Internal","Note"].index(
+        n.get("note_type", "Note")
+    ),
+    key=f"nty_{n['id']}"
+)
+
+new_stage = st.selectbox(
+    "Stage",
+    ["New", "Outreach", "Engaged", "Meeting", "Proposal", "Won", "Lost"],
+    index=["New","Outreach","Engaged","Meeting","Proposal","Won","Lost"].index(
+        n.get("stage", "New")
+    ),
+    key=f"nst_{n['id']}"
+)
                 new_text = st.text_area(
                     "Edit note",
                     value=n["content"],
@@ -409,7 +435,7 @@ with c1:
                 c_save, c_cancel = st.columns([1, 1])
 
                 if c_save.button("Save changes", key=f"btn_save_{n['id']}"):
-                    update_note(n["id"], new_text.strip(), new_date)
+                    update_note(n["id"], new_text.strip(), new_date, new_type, new_stage)
                     st.session_state[edit_key] = False
                     st.success("Note updated.")
                     st.rerun()
