@@ -358,15 +358,15 @@ with c1:
     stage = st.selectbox("Stage", ["New", "Outreach", "Engaged", "Meeting", "Proposal", "Won", "Lost"])
     note_text = st.text_area("Paste LinkedIn snippets / meeting notes here", height=180)
 
-if st.button("Add note"):
-    if note_text.strip():
-        add_note(acc_id, note_date, note_type, stage, note_text.strip())
-        st.success("Note added.")
-        st.rerun()
-    else:
-        st.warning("Note is empty.")
+    if st.button("Add note"):
+        if note_text.strip():
+            add_note(acc_id, note_date, note_type, stage, note_text.strip())
+            st.success("Note added.")
+            st.rerun()
+        else:
+            st.warning("Note is empty.")
 
-        st.markdown("#### Notes log")
+    st.markdown("#### Notes log")
     for n in notes[:20]:
         created = n.get("created_at", "")
 
@@ -378,15 +378,15 @@ if st.button("Add note"):
             created_short = ""
 
         nt = n.get("note_type", "Note")
-stg = n.get("stage", "")
-header = f"{n['note_date']}  ·  {created_short}  ·  {nt}  ·  {stg}"
-
+        stg = n.get("stage", "")
+        header = f"{n['note_date']}  ·  {created_short}  ·  {nt}  ·  {stg}"
 
         with st.expander(
             f"{header} — {n['content'][:60]}{'…' if len(n['content'])>60 else ''}",
             expanded=False
         ):
             st.write(n["content"])
+
 
             edit_key = f"edit_{n['id']}"
             if edit_key not in st.session_state:
