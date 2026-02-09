@@ -392,16 +392,16 @@ with right:
 # --- MIDDLE: Workspace ---
 with middle:
     st.subheader("Workspace")
-    tabs = st.tabs(["General", "Attachments / progress", "E-mail", "Characteristics", "Cases"])
+    tabs = st.tabs(["General", "Attachments / progress", "E-mail", "Characteristics", "Cases", "Stakeholders"])
 
     dossier_text = dossier_row.get("dossier") or ""
     stakeholders_text = dossier_row.get("stakeholders") or ""
     messages_text = dossier_row.get("messages") or ""
     scan_text = dossier_row.get("business_scan") or ""
 
-    with tabs[0]:
-        dossier_text = st.text_area("Dossier", value=dossier_text, height=260)
-        stakeholders_text = st.text_area("Stakeholders", value=stakeholders_text, height=200)
+    wwith tabs[0]:
+        dossier_text = st.text_area("Dossier", value=dossier_text, height=320)
+
 
     with tabs[1]:
         st.info("Progress is tracked via notes.")
@@ -419,6 +419,10 @@ with middle:
         case_search = st.text_input("Search cases")
         all_cases = get_cases(case_search)
         linked_ids = {c["id"] for c in linked_cases}
+    
+    with tabs[5]:
+    stakeholders_text = st.text_area("Stakeholders", value=stakeholders_text, height=420)
+
 
         for c in all_cases[:30]:
             checked = c["id"] in linked_ids
