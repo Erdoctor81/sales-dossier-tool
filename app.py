@@ -421,7 +421,11 @@ with middle:
         linked_ids = {c["id"] for c in linked_cases}
     
     with tabs[5]:
-    stakeholders_text = st.text_area("Stakeholders", value=stakeholders_text, height=420)
+        stakeholders_text = st.text_area(
+        "Stakeholders",
+        value=stakeholders_text,
+        height=420
+    )
 
 
         for c in all_cases[:30]:
