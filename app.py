@@ -390,24 +390,34 @@ for n in notes[:20]:
 
 with c2:
     st.markdown("### Workspace")
-    tabs = st.tabs(["Dossier", "Stakeholders", "Messages", "Business Scan", "Cases"])
+    top_tabs = st.tabs(["General", "Attachments / progress", "E-mail", "Characteristics", "Cases"])
 
     dossier_text = dossier_row.get("dossier") or ""
     stakeholders_text = dossier_row.get("stakeholders") or ""
     messages_text = dossier_row.get("messages") or ""
     scan_text = dossier_row.get("business_scan") or ""
 
-    with tabs[0]:
-        dossier_text = st.text_area("Dossier (single source of truth)", value=dossier_text, height=260)
+  with top_tabs[0]:
+    st.subheader("General")
+    dossier_text = st.text_area("Dossier (single source of truth)", value=dossier_text, height=260)
+    stakeholders_text = st.text_area("Stakeholders", value=stakeholders_text, height=260)
 
-    with tabs[1]:
-        stakeholders_text = st.text_area("Stakeholders", value=stakeholders_text, height=260)
+with top_tabs[1]:
+    st.subheader("Attachments / progress")
+    st.info("MVP: notes are your progress log. Later: file attachments + stage updates.")
 
-    with tabs[2]:
-        messages_text = st.text_area("Messages", value=messages_text, height=260)
+with top_tabs[2]:
+    st.subheader("E-mail")
+    messages_text = st.text_area("Messages (LinkedIn + Email)", value=messages_text, height=320)
 
-    with tabs[3]:
-        scan_text = st.text_area("Business scan", value=scan_text, height=260)
+with top_tabs[3]:
+    st.subheader("Characteristics")
+    st.write(f"Industry: {account.get('industry','')}")
+    st.write(f"Segment: {account.get('segment','')}")
+    st.write(f"Geography: {account.get('geography','')}")
+    st.write(f"Priority: {account.get('priority','')}")
+    st.write(f"Status: {account.get('status','')}")
+    scan_text = st.text_area("Business scan", value=scan_text, height=260)
 
     with tabs[4]:
         st.markdown("#### Link cases to this account (select 1–5)")
