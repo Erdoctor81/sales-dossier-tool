@@ -382,37 +382,20 @@ if qp.get("focus") == "notes" and qp.get("acc_id") == str(acc_id):
 with right:
     st.subheader("General")
 
-    st.markdown("#### Add note")
-    note_date = st.date_input("Note date", value=date.today())
-    note_type = st.selectbox("Type", ["LinkedIn", "Email", "Call", "Meeting", "Internal", "Note"])
-    stage = st.selectbox("Stage", ["New", "Outreach", "Engaged", "Meeting", "Proposal", "Won", "Lost"])
-    note_text = st.text_area("Notes", height=140)
-
-    if st.button("Add note"):
-        if note_text.strip():
-            add_note(acc_id, note_date, note_type, stage, note_text.strip())
-            st.success("Note added.")
-            st.rerun()
-        else:
-            st.warning("Note is empty.")
-
-    st.markdown("#### Notes log")
-    for n in notes[:20]:
-        created = n.get("created_at", "")
-        if created:
-            dt = datetime.fromisoformat(created.replace("Z", "+00:00")).astimezone()
-            created_short = dt.strftime("%d-%m-%Y %H:%M")
-        else:
-            created_short = ""
-
-        header = f"{n['note_date']} · {created_short} · {n.get('note_type','')} · {n.get('stage','')}"
-        with st.expander(header):
-            st.write(n["content"])
+   
 
 # --- MIDDLE: Workspace ---
 with middle:
     st.subheader("Workspace")
-    tabs = st.tabs(["General", "Attachments / progress", "E-mail", "Characteristics", "Cases", "Stakeholders"])
+    tabs = st.tabs([
+    "General",
+    "Attachments / progress",
+    "E-mail",
+    "Characteristics",
+    "Cases",
+    "Notes",
+    "Stakeholders"
+])
 
     dossier_text = dossier_row.get("dossier") or ""
     stakeholders_text = dossier_row.get("stakeholders") or ""
@@ -441,84 +424,76 @@ with middle:
         linked_ids = {c["id"] for c in linked_cases}
     
     with tabs[5]:
-        st.subheader("Stakeholders & Notes")
+        with tabs[5]:
+    st.subheader("Notes")
 
-    col_s, col_n = st.columns([1, 1])
+    # Add note (boven)
+    top_l, top_r = st.columns([1, 1])
 
-    with col_s:
-        stakeholders_text = st.text_area(
-            "Stakeholders",
-            value=stakeholders_text,
-            height=520
-        )
-
-    with col_n:
-        st.markdown("##### Notes")
-
-        # (A) Add note input (blijft in deze tab)
+    with top_l:
         note_date = st.date_input("Note date", value=date.today(), key="notes_tab_date")
         note_type = st.selectbox(
             "Type",
             ["LinkedIn", "Email", "Call", "Meeting", "Internal", "Note"],
             key="notes_tab_type"
         )
+
+    with top_r:
         stage = st.selectbox(
             "Stage",
             ["New", "Outreach", "Engaged", "Meeting", "Proposal", "Won", "Lost"],
             key="notes_tab_stage"
         )
-        note_text = st.text_area("Add note", height=110, key="notes_tab_text")
 
-        if st.button("Add note", key="notes_tab_add"):
-            if note_text.strip():
-                add_note(acc_id, note_date, note_type, stage, note_text.strip())
-                st.success("Note added.")
-                st.rerun()
-            else:
-                st.warning("Note is empty.")
+    note_text = st.text_area("Add note", height=140, key="notes_tab_text")
 
-        st.divider()
+    if st.button("Add note", key="notes_tab_add"):
+        if note_text.strip():
+            add_note(acc_id, note_date, note_type, stage, note_text.strip())
+            st.success("Note added.")
+            st.rerun()
+        else:
+            st.warning("Note is empty.")
 
-        # (B) Notes overview (één groot overzicht, zoals dossier)
-        def _local_ts(iso_str: str) -> str:
-            if not iso_str:
-                return ""
-            dt = datetime.fromisoformat(iso_str.replace("Z", "+00:00")).astimezone()
-            return dt.strftime("%d-%m-%Y %H:%M")
+    st.divider()
 
-        notes_overview = "\n\n".join([
-            f"{n.get('note_date','')} | {_local_ts(n.get('created_at',''))} | {n.get('note_type','')} | {n.get('stage','')}\n"
-            f"{n.get('content','')}"
-            for n in notes[:50]
-        ]) or "(no notes yet)"
+    # Notes overview (grote read-only viewer)
+    def _local_ts(iso_str: str) -> str:
+        if not iso_str:
+            return ""
+        dt = datetime.fromisoformat(iso_str.replace("Z", "+00:00")).astimezone()
+        return dt.strftime("%d-%m-%Y %H:%M")
 
-        st.text_area(
-            "Notes overview (newest first)",
-            value=notes_overview,
-            height=330,
-            disabled=True,
-            key="notes_overview"
-        )
-        st.markdown(
-            f"➡️ **Open Notes focus view:** "
-            f"[Open in focus](?focus=notes&acc_id={acc_id}) "
-            f"(Ctrl/⌘-click for new tab)"
-)
+    notes_overview = "\n\n".join([
+        f"{n.get('note_date','')} | {_local_ts(n.get('created_at',''))} | {n.get('note_type','')} | {n.get('stage','')}\n"
+        f"{n.get('content','')}"
+        for n in notes[:200]
+    ]) or "(no notes yet)"
 
+    st.text_area(
+        "Notes overview (newest first)",
+        value=notes_overview,
+        height=520,
+        disabled=True,
+        key="notes_overview_big"
+    )
 
-        # (C) Focus / open in new tab
-        st.markdown(
-            f"➡️ **Tip:** open Notes in focus: "
-            f"[Open Notes focus view](?focus=notes&acc_id={acc_id}) "
-            f"(Ctrl/⌘-click for new tab)"
-        )
+    st.markdown(
+        f"➡️ **Open full-page Notes:** "
+        f"[Open Notes focus](?focus=notes&acc_id={acc_id}) "
+        f"(Ctrl/⌘-click for new tab)"
+    )
 
 
+with tabs[6]:
+    st.subheader("Stakeholders")
 
-        for c in all_cases[:30]:
-            checked = c["id"] in linked_ids
-            if st.checkbox(c["title"], value=checked, key=f"case_{c['id']}"):
-                link_case(acc_id, c["id"], True)
+    stakeholders_text = st.text_area(
+        "Stakeholders",
+        value=stakeholders_text,
+        height=520,
+        key="stakeholders_text_area"
+    )
 
     if st.button("Save workspace"):
         save_dossier(acc_id, dossier_text, stakeholders_text, messages_text, scan_text)
