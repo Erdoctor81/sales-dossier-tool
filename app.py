@@ -413,8 +413,7 @@ with middle:
     scan_text = dossier_row.get("business_scan") or ""
 
     with tabs[0]:
-       
-
+       pass
 
     with tabs[1]:
         st.info("Progress is tracked via notes.")
