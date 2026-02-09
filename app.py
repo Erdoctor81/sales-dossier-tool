@@ -365,8 +365,7 @@ with c1:
             st.rerun()
         else:
             st.warning("Note is empty.")
-
-    st.markdown("#### Notes log")
+                st.markdown("#### Notes log")
     for n in notes[:20]:
         created = n.get("created_at", "")
 
@@ -387,7 +386,6 @@ with c1:
         ):
             st.write(n["content"])
 
-
             edit_key = f"edit_{n['id']}"
             if edit_key not in st.session_state:
                 st.session_state[edit_key] = False
@@ -402,7 +400,7 @@ with c1:
                 st.success("Note deleted.")
                 st.rerun()
 
-                        if st.session_state[edit_key]:
+            if st.session_state[edit_key]:
                 new_date = st.date_input(
                     "Note date",
                     value=date.fromisoformat(n["note_date"]),
@@ -437,13 +435,7 @@ with c1:
                 c_save, c_cancel = st.columns([1, 1])
 
                 if c_save.button("Save changes", key=f"btn_save_{n['id']}"):
-                    update_note(
-                        n["id"],
-                        new_text.strip(),
-                        new_date,
-                        new_type,
-                        new_stage
-                    )
+                    update_note(n["id"], new_text.strip(), new_date, new_type, new_stage)
                     st.session_state[edit_key] = False
                     st.success("Note updated.")
                     st.rerun()
@@ -451,8 +443,6 @@ with c1:
                 if c_cancel.button("Cancel", key=f"btn_cancel_{n['id']}"):
                     st.session_state[edit_key] = False
                     st.rerun()
-
-
 
 with c2:
     st.markdown("### Workspace")
