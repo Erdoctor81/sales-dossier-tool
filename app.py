@@ -351,6 +351,16 @@ with left:
     }
     pick = st.selectbox("Select account", list(label_to_id.keys()))
     acc_id = label_to_id[pick]
+    st.divider()
+    st.subheader("Dossier")
+
+    dossier_text = st.text_area(
+        "Dossier",
+        value=dossier_row.get("dossier") or "",
+        height=420,
+        key="dossier_left"
+)
+
 
 # --- Shared data (SAFE: acc_id is guaranteed here) ---
 account = get_account(acc_id)
@@ -403,7 +413,7 @@ with middle:
     scan_text = dossier_row.get("business_scan") or ""
 
     with tabs[0]:
-        dossier_text = st.text_area("Dossier", value=dossier_text, height=320)
+       
 
 
     with tabs[1]:
