@@ -351,9 +351,17 @@ with c1:
 
     st.markdown("#### Notes log")
 for n in notes[:20]:
-    created = n.get("created_at", "")
-    created_short = created.replace("T", " ")[:16] if created else ""
-    header = f"{n['note_date']}  ·  {created_short}"
+   created = n.get("created_at", "")
+
+if created:
+    # Parse UTC timestamp and convert to local time
+    dt_utc = datetime.fromisoformat(created.replace("Z", "+00:00"))
+    dt_local = dt_utc.astimezone()  # converts to local timezone
+    created_short = dt_local.strftime("%d-%m-%Y %H:%M")
+else:
+    created_short = ""
+
+header = f"{n['note_date']}  ·  {created_short}"
 
     with st.expander(f"{header} — {n['content'][:60]}{'…' if len(n['content'])>60 else ''}", expanded=False):
         st.write(n["content"])
