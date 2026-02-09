@@ -399,7 +399,7 @@ with middle:
     messages_text = dossier_row.get("messages") or ""
     scan_text = dossier_row.get("business_scan") or ""
 
-    wwith tabs[0]:
+    with tabs[0]:
         dossier_text = st.text_area("Dossier", value=dossier_text, height=320)
 
 
