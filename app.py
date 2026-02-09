@@ -92,7 +92,16 @@ def save_dossier(acc_id, dossier, stakeholders, messages, business_scan):
     db.table("accounts").update({"updated_at": now_iso()}).eq("id", acc_id).execute()
 
 def add_note(acc_id, note_date, content):
-    def update_note(note_id, new_content, new_note_date=None):
+    db.table("notes").insert({
+        "account_id": acc_id,
+        "note_date": str(note_date),
+        "content": content,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }).execute()
+    db.table("accounts").update({"updated_at": now_iso()}).eq("id", acc_id).execute()
+
+
+def update_note(note_id, new_content, new_note_date=None):
     payload = {"content": new_content}
     if new_note_date is not None:
         payload["note_date"] = str(new_note_date)
@@ -101,6 +110,7 @@ def add_note(acc_id, note_date, content):
 
 def delete_note(note_id):
     db.table("notes").delete().eq("id", note_id).execute()
+
 
 
     db.table("notes").insert({
@@ -351,51 +361,62 @@ with c1:
         else:
             st.warning("Note is empty.")
 
-    st.markdown("#### Notes log")
-for n in notes[:20]:
-   created = n.get("created_at", "")
+        st.markdown("#### Notes log")
+    for n in notes[:20]:
+        created = n.get("created_at", "")
 
-if created:
-    # Parse UTC timestamp and convert to local time
-    dt_utc = datetime.fromisoformat(created.replace("Z", "+00:00"))
-    dt_local = dt_utc.astimezone()  # converts to local timezone
-    created_short = dt_local.strftime("%d-%m-%Y %H:%M")
-else:
-    created_short = ""
+        if created:
+            dt_utc = datetime.fromisoformat(created.replace("Z", "+00:00"))
+            dt_local = dt_utc.astimezone()
+            created_short = dt_local.strftime("%d-%m-%Y %H:%M")
+        else:
+            created_short = ""
 
-header = f"{n['note_date']}  ·  {created_short}"
+        header = f"{n['note_date']}  ·  {created_short}"
 
-    with st.expander(f"{header} — {n['content'][:60]}{'…' if len(n['content'])>60 else ''}", expanded=False):
-        st.write(n["content"])
+        with st.expander(
+            f"{header} — {n['content'][:60]}{'…' if len(n['content'])>60 else ''}",
+            expanded=False
+        ):
+            st.write(n["content"])
 
-        edit_key = f"edit_{n['id']}"
-        if edit_key not in st.session_state:
-            st.session_state[edit_key] = False
-
-        c_edit, c_del = st.columns([1, 1])
-
-        if c_edit.button("Edit", key=f"btn_edit_{n['id']}"):
-            st.session_state[edit_key] = True
-
-        if c_del.button("Delete", key=f"btn_del_{n['id']}"):
-            delete_note(n["id"])
-            st.success("Note deleted.")
-            st.rerun()
-
-        if st.session_state[edit_key]:
-            new_date = st.date_input("Note date", value=date.fromisoformat(n["note_date"]), key=f"nd_{n['id']}")
-            new_text = st.text_area("Edit note", value=n["content"], height=140, key=f"nt_{n['id']}")
-            c_save, c_cancel = st.columns([1, 1])
-
-            if c_save.button("Save changes", key=f"btn_save_{n['id']}"):
-                update_note(n["id"], new_text.strip(), new_date)
+            edit_key = f"edit_{n['id']}"
+            if edit_key not in st.session_state:
                 st.session_state[edit_key] = False
-                st.success("Note updated.")
+
+            c_edit, c_del = st.columns([1, 1])
+
+            if c_edit.button("Edit", key=f"btn_edit_{n['id']}"):
+                st.session_state[edit_key] = True
+
+            if c_del.button("Delete", key=f"btn_del_{n['id']}"):
+                delete_note(n["id"])
+                st.success("Note deleted.")
                 st.rerun()
 
-            if c_cancel.button("Cancel", key=f"btn_cancel_{n['id']}"):
-                st.session_state[edit_key] = False
-                st.rerun()
+            if st.session_state[edit_key]:
+                new_date = st.date_input(
+                    "Note date",
+                    value=date.fromisoformat(n["note_date"]),
+                    key=f"nd_{n['id']}"
+                )
+                new_text = st.text_area(
+                    "Edit note",
+                    value=n["content"],
+                    height=140,
+                    key=f"nt_{n['id']}"
+                )
+                c_save, c_cancel = st.columns([1, 1])
+
+                if c_save.button("Save changes", key=f"btn_save_{n['id']}"):
+                    update_note(n["id"], new_text.strip(), new_date)
+                    st.session_state[edit_key] = False
+                    st.success("Note updated.")
+                    st.rerun()
+
+                if c_cancel.button("Cancel", key=f"btn_cancel_{n['id']}"):
+                    st.session_state[edit_key] = False
+                    st.rerun()
 
 
 with c2:
@@ -407,36 +428,41 @@ with c2:
     messages_text = dossier_row.get("messages") or ""
     scan_text = dossier_row.get("business_scan") or ""
 
-  with top_tabs[0]:
-    st.subheader("General")
-    dossier_text = st.text_area("Dossier (single source of truth)", value=dossier_text, height=260)
-    stakeholders_text = st.text_area("Stakeholders", value=stakeholders_text, height=260)
+    with top_tabs[0]:
+        st.subheader("General")
+        dossier_text = st.text_area("Dossier (single source of truth)", value=dossier_text, height=260)
+        stakeholders_text = st.text_area("Stakeholders", value=stakeholders_text, height=260)
 
-with top_tabs[1]:
-    st.subheader("Attachments / progress")
-    st.info("MVP: notes are your progress log. Later: file attachments + stage updates.")
+    with top_tabs[1]:
+        st.subheader("Attachments / progress")
+        st.info("MVP: notes are your progress log. Later: file attachments + stage updates.")
 
-with top_tabs[2]:
-    st.subheader("E-mail")
-    messages_text = st.text_area("Messages (LinkedIn + Email)", value=messages_text, height=320)
+    with top_tabs[2]:
+        st.subheader("E-mail")
+        messages_text = st.text_area("Messages (LinkedIn + Email)", value=messages_text, height=320)
 
-with top_tabs[3]:
-    st.subheader("Characteristics")
-    st.write(f"Industry: {account.get('industry','')}")
-    st.write(f"Segment: {account.get('segment','')}")
-    st.write(f"Geography: {account.get('geography','')}")
-    st.write(f"Priority: {account.get('priority','')}")
-    st.write(f"Status: {account.get('status','')}")
-    scan_text = st.text_area("Business scan", value=scan_text, height=260)
+    with top_tabs[3]:
+        st.subheader("Characteristics")
+        st.write(f"Industry: {account.get('industry','')}")
+        st.write(f"Segment: {account.get('segment','')}")
+        st.write(f"Geography: {account.get('geography','')}")
+        st.write(f"Priority: {account.get('priority','')}")
+        st.write(f"Status: {account.get('status','')}")
+        scan_text = st.text_area("Business scan", value=scan_text, height=260)
 
-    with tabs[4]:
+    with top_tabs[4]:
         st.markdown("#### Link cases to this account (select 1–5)")
         case_search = st.text_input("Search cases (title/tags)", key="case_search")
         all_cases = get_cases(case_search)
         linked_ids = {c["id"] for c in linked_cases}
+
         for c in all_cases[:30]:
             checked = c["id"] in linked_ids
-            new_checked = st.checkbox(f"{c['title']}  ·  {c.get('industry','')}", value=checked, key=f"case_{c['id']}")
+            new_checked = st.checkbox(
+                f"{c['title']}  ·  {c.get('industry','')}",
+                value=checked,
+                key=f"case_{c['id']}"
+            )
             if new_checked != checked:
                 link_case(acc_id, c["id"], new_checked)
                 st.rerun()
@@ -447,6 +473,7 @@ with top_tabs[3]:
         ci = st.text_input("Industry", key="new_case_industry")
         tg = st.text_input("Tags (comma-separated)", key="new_case_tags")
         cc = st.text_area("Case content (problem → approach → outcome)", height=120, key="new_case_content")
+
         if st.button("Add case"):
             if ct.strip() and cc.strip():
                 add_case(ct.strip(), ci.strip(), tg.strip(), cc.strip())
