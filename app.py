@@ -351,6 +351,10 @@ with left:
     }
     pick = st.selectbox("Select account", list(label_to_id.keys()))
     acc_id = label_to_id[pick]
+    account = get_account(acc_id)
+    dossier_row = get_dossier(acc_id)
+    notes = get_notes(acc_id)
+    linked_cases = get_linked_cases(acc_id)
     st.divider()
     st.subheader("Dossier")
 
@@ -363,10 +367,7 @@ with left:
 
 
 # --- Shared data (SAFE: acc_id is guaranteed here) ---
-account = get_account(acc_id)
-dossier_row = get_dossier(acc_id)
-notes = get_notes(acc_id)
-linked_cases = get_linked_cases(acc_id)
+
 # --- Focus view handler (opens with ?focus=notes&acc_id=...) ---
 qp = st.query_params
 if qp.get("focus") == "notes" and qp.get("acc_id") == str(acc_id):
