@@ -332,9 +332,19 @@ with st.sidebar:
             st.success("Saved.")
             st.rerun()
 
-st.subheader("Accounts")
-search = st.text_input("Search accounts")
-accounts = get_accounts(search)
+
+
+account = get_account(acc_id)
+dossier_row = get_dossier(acc_id)
+notes = get_notes(acc_id)
+linked_cases = get_linked_cases(acc_id)
+
+left, middle, right = st.columns([1, 2, 1])
+
+with left:
+    st.subheader("Accounts")
+    search = st.text_input("Search accounts")
+    accounts = get_accounts(search)
 
 if not accounts:
     st.info("No accounts yet. Create one in the sidebar.")
@@ -344,14 +354,7 @@ label_to_id = {f"{a['name']}  ·  {a.get('status','')}  ·  P{a.get('priority','
 pick = st.selectbox("Select account", list(label_to_id.keys()))
 acc_id = label_to_id[pick]
 
-account = get_account(acc_id)
-dossier_row = get_dossier(acc_id)
-notes = get_notes(acc_id)
-linked_cases = get_linked_cases(acc_id)
-
-c1, c2 = st.columns([1, 1])
-
-with c1:
+with right:
     st.markdown("### Notes")
     note_date = st.date_input("Note date", value=date.today())
     note_type = st.selectbox("Type", ["LinkedIn", "Email", "Call", "Meeting", "Internal", "Note"])
@@ -444,7 +447,7 @@ with c1:
                     st.session_state[edit_key] = False
                     st.rerun()
 
-with c2:
+with middle:
     st.markdown("### Workspace")
     top_tabs = st.tabs(["General", "Attachments / progress", "E-mail", "Characteristics", "Cases"])
 
