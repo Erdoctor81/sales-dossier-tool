@@ -357,6 +357,26 @@ account = get_account(acc_id)
 dossier_row = get_dossier(acc_id)
 notes = get_notes(acc_id)
 linked_cases = get_linked_cases(acc_id)
+# --- Focus view handler (opens with ?focus=notes&acc_id=...) ---
+qp = st.query_params
+if qp.get("focus") == "notes" and qp.get("acc_id") == str(acc_id):
+    st.title(f"Notes Focus — {account.get('name','')}")
+    st.caption("Tip: close this tab to return to the main workspace.")
+
+    def _local_ts(iso_str: str) -> str:
+        if not iso_str:
+            return ""
+        dt = datetime.fromisoformat(iso_str.replace("Z", "+00:00")).astimezone()
+        return dt.strftime("%d-%m-%Y %H:%M")
+
+    notes_overview = "\n\n".join([
+        f"{n.get('note_date','')} | {_local_ts(n.get('created_at',''))} | {n.get('note_type','')} | {n.get('stage','')}\n"
+        f"{n.get('content','')}"
+        for n in notes[:200]
+    ]) or "(no notes yet)"
+
+    st.text_area("Notes (focus)", value=notes_overview, height=750, disabled=True)
+    st.stop()
 
 # --- RIGHT: General / Notes ---
 with right:
@@ -421,11 +441,78 @@ with middle:
         linked_ids = {c["id"] for c in linked_cases}
     
     with tabs[5]:
+        st.subheader("Stakeholders & Notes")
+
+    col_s, col_n = st.columns([1, 1])
+
+    with col_s:
         stakeholders_text = st.text_area(
-        "Stakeholders",
-        value=stakeholders_text,
-        height=420
-    )
+            "Stakeholders",
+            value=stakeholders_text,
+            height=520
+        )
+
+    with col_n:
+        st.markdown("##### Notes")
+
+        # (A) Add note input (blijft in deze tab)
+        note_date = st.date_input("Note date", value=date.today(), key="notes_tab_date")
+        note_type = st.selectbox(
+            "Type",
+            ["LinkedIn", "Email", "Call", "Meeting", "Internal", "Note"],
+            key="notes_tab_type"
+        )
+        stage = st.selectbox(
+            "Stage",
+            ["New", "Outreach", "Engaged", "Meeting", "Proposal", "Won", "Lost"],
+            key="notes_tab_stage"
+        )
+        note_text = st.text_area("Add note", height=110, key="notes_tab_text")
+
+        if st.button("Add note", key="notes_tab_add"):
+            if note_text.strip():
+                add_note(acc_id, note_date, note_type, stage, note_text.strip())
+                st.success("Note added.")
+                st.rerun()
+            else:
+                st.warning("Note is empty.")
+
+        st.divider()
+
+        # (B) Notes overview (één groot overzicht, zoals dossier)
+        def _local_ts(iso_str: str) -> str:
+            if not iso_str:
+                return ""
+            dt = datetime.fromisoformat(iso_str.replace("Z", "+00:00")).astimezone()
+            return dt.strftime("%d-%m-%Y %H:%M")
+
+        notes_overview = "\n\n".join([
+            f"{n.get('note_date','')} | {_local_ts(n.get('created_at',''))} | {n.get('note_type','')} | {n.get('stage','')}\n"
+            f"{n.get('content','')}"
+            for n in notes[:50]
+        ]) or "(no notes yet)"
+
+        st.text_area(
+            "Notes overview (newest first)",
+            value=notes_overview,
+            height=330,
+            disabled=True,
+            key="notes_overview"
+        )
+        st.markdown(
+            f"➡️ **Open Notes focus view:** "
+            f"[Open in focus](?focus=notes&acc_id={acc_id}) "
+            f"(Ctrl/⌘-click for new tab)"
+)
+
+
+        # (C) Focus / open in new tab
+        st.markdown(
+            f"➡️ **Tip:** open Notes in focus: "
+            f"[Open Notes focus view](?focus=notes&acc_id={acc_id}) "
+            f"(Ctrl/⌘-click for new tab)"
+        )
+
 
 
         for c in all_cases[:30]:
