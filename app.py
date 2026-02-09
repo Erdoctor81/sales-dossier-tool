@@ -402,39 +402,48 @@ with c1:
                 st.success("Note deleted.")
                 st.rerun()
 
-            if st.session_state[edit_key]:
+                        if st.session_state[edit_key]:
                 new_date = st.date_input(
                     "Note date",
                     value=date.fromisoformat(n["note_date"]),
                     key=f"nd_{n['id']}"
                 )
-                new_type = st.selectbox(
-    "Type",
-    ["LinkedIn", "Email", "Call", "Meeting", "Internal", "Note"],
-    index=["LinkedIn","Email","Call","Meeting","Internal","Note"].index(
-        n.get("note_type", "Note")
-    ),
-    key=f"nty_{n['id']}"
-)
 
-new_stage = st.selectbox(
-    "Stage",
-    ["New", "Outreach", "Engaged", "Meeting", "Proposal", "Won", "Lost"],
-    index=["New","Outreach","Engaged","Meeting","Proposal","Won","Lost"].index(
-        n.get("stage", "New")
-    ),
-    key=f"nst_{n['id']}"
-)
+                new_type = st.selectbox(
+                    "Type",
+                    ["LinkedIn", "Email", "Call", "Meeting", "Internal", "Note"],
+                    index=["LinkedIn","Email","Call","Meeting","Internal","Note"].index(
+                        n.get("note_type", "Note")
+                    ),
+                    key=f"nty_{n['id']}"
+                )
+
+                new_stage = st.selectbox(
+                    "Stage",
+                    ["New", "Outreach", "Engaged", "Meeting", "Proposal", "Won", "Lost"],
+                    index=["New","Outreach","Engaged","Meeting","Proposal","Won","Lost"].index(
+                        n.get("stage", "New")
+                    ),
+                    key=f"nst_{n['id']}"
+                )
+
                 new_text = st.text_area(
                     "Edit note",
                     value=n["content"],
                     height=140,
                     key=f"nt_{n['id']}"
                 )
+
                 c_save, c_cancel = st.columns([1, 1])
 
                 if c_save.button("Save changes", key=f"btn_save_{n['id']}"):
-                    update_note(n["id"], new_text.strip(), new_date, new_type, new_stage)
+                    update_note(
+                        n["id"],
+                        new_text.strip(),
+                        new_date,
+                        new_type,
+                        new_stage
+                    )
                     st.session_state[edit_key] = False
                     st.success("Note updated.")
                     st.rerun()
@@ -442,6 +451,7 @@ new_stage = st.selectbox(
                 if c_cancel.button("Cancel", key=f"btn_cancel_{n['id']}"):
                     st.session_state[edit_key] = False
                     st.rerun()
+
 
 
 with c2:
