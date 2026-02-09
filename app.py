@@ -365,7 +365,7 @@ with c1:
             st.rerun()
         else:
             st.warning("Note is empty.")
-                st.markdown("#### Notes log")
+            st.markdown("#### Notes log")
     for n in notes[:20]:
         created = n.get("created_at", "")
 
