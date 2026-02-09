@@ -98,8 +98,10 @@ def add_note(acc_id, note_date, content):
         payload["note_date"] = str(new_note_date)
     db.table("notes").update(payload).eq("id", note_id).execute()
 
+
 def delete_note(note_id):
     db.table("notes").delete().eq("id", note_id).execute()
+
 
     db.table("notes").insert({
         "account_id": acc_id,
