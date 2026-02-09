@@ -354,18 +354,17 @@ c1, c2 = st.columns([1, 1])
 with c1:
     st.markdown("### Notes")
     note_date = st.date_input("Note date", value=date.today())
-note_type = st.selectbox("Type", ["LinkedIn", "Email", "Call", "Meeting", "Internal", "Note"])
-stage = st.selectbox("Stage", ["New", "Outreach", "Engaged", "Meeting", "Proposal", "Won", "Lost"])
-note_text = st.text_area("Paste LinkedIn snippets / meeting notes here", height=180)
+    note_type = st.selectbox("Type", ["LinkedIn", "Email", "Call", "Meeting", "Internal", "Note"])
+    stage = st.selectbox("Stage", ["New", "Outreach", "Engaged", "Meeting", "Proposal", "Won", "Lost"])
+    note_text = st.text_area("Paste LinkedIn snippets / meeting notes here", height=180)
 
-    if st.button("Add note"):
-        if note_text.strip():
-            add_note(acc_id, note_date, note_type, stage, note_text.strip())
-
-            st.success("Note added.")
-            st.rerun()
-        else:
-            st.warning("Note is empty.")
+if st.button("Add note"):
+    if note_text.strip():
+        add_note(acc_id, note_date, note_type, stage, note_text.strip())
+        st.success("Note added.")
+        st.rerun()
+    else:
+        st.warning("Note is empty.")
 
         st.markdown("#### Notes log")
     for n in notes[:20]:
