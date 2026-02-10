@@ -392,7 +392,6 @@ if qp.get("focus") == "notes" and qp.get("acc_id") == str(acc_id):
 
 # --- RIGHT: General / Notes ---
 with right:
-    with right:
     st.subheader("Copilot Snapshot")
 
     # Compacte account snapshot (read-only)
