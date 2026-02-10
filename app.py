@@ -524,13 +524,13 @@ with tabs[7]:
     )
 
     if st.button("Save workspace"):
-    save_dossier(
-        acc_id,
-        dossier_text,
-        stakeholders_text,
-        messages_text,
-        scan_text,
-        copilot_text if "copilot_text" in locals() else (dossier_row.get("copilot_snapshot") or "")
+        save_dossier(
+            acc_id,
+            dossier_text,
+            stakeholders_text,
+            messages_text,
+            scan_text,
+            copilot_text if "copilot_text" in locals() else (dossier_row.get("copilot_snapshot") or "")
     )
     st.success("Saved.")
 
