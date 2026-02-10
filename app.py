@@ -725,7 +725,7 @@ with tabs[5]:
     note_text = st.text_area("Add note", height=140, key="notes_text")
 
     if st.button("Add note", key="add_note_btn"):
-    if note_text.strip():
+        if note_text.strip():
         add_note(acc_id, note_date, note_type, stage, note_text.strip())
 
         # maak inputveld leeg
