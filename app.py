@@ -421,114 +421,107 @@ with middle:
     "Characteristics",
     "Cases",
     "Notes",
-    "Stakeholders"
+    "Stakeholders",
+    "Sales Copilot"
 ])
 
-    dossier_text = dossier_row.get("dossier") or ""
-    stakeholders_text = dossier_row.get("stakeholders") or ""
-    messages_text = dossier_row.get("messages") or ""
-    scan_text = dossier_row.get("business_scan") or ""
+# ---- TAB 0: General ----
+with tabs[0]:
+    st.write(" ")
 
-    with tabs[0]:
-       pass
+# ---- TAB 1: Attachments / progress ----
+with tabs[1]:
+    st.info("Progress is tracked via Notes.")
 
-    with tabs[1]:
-        st.info("Progress is tracked via notes.")
+# ---- TAB 2: E-mail ----
+with tabs[2]:
+    messages_text = st.text_area("Messages", value=messages_text, height=260)
 
-    with tabs[2]:
-        messages_text = st.text_area("Messages", value=messages_text, height=260)
+# ---- TAB 3: Characteristics ----
+with tabs[3]:
+    st.write(f"Industry: {account.get('industry','')}")
+    st.write(f"Segment: {account.get('segment','')}")
+    st.write(f"Geography: {account.get('geography','')}")
+    st.write(f"Priority: {account.get('priority','')}")
+    st.write(f"Status: {account.get('status','')}")
+    scan_text = st.text_area("Business scan", value=scan_text, height=240)
 
-    with tabs[3]:
-        st.write(f"Industry: {account.get('industry','')}")
-        st.write(f"Segment: {account.get('segment','')}")
-        st.write(f"Status: {account.get('status','')}")
-        scan_text = st.text_area("Business scan", value=scan_text, height=240)
+# ---- TAB 4: Cases ----
+with tabs[4]:
+    case_search = st.text_input("Search cases", key="case_search")
+    all_cases = get_cases(case_search)
+    linked_ids = {c["id"] for c in linked_cases}
 
-    with tabs[4]:
-        case_search = st.text_input("Search cases")
-        all_cases = get_cases(case_search)
-        linked_ids = {c["id"] for c in linked_cases}
-    
-    with tabs[5]:
-        st.subheader("Notes")
-
-    # Add note (boven)
-    top_l, top_r = st.columns([1, 1])
-
-    with top_l:
-        note_date = st.date_input("Note date", value=date.today(), key="notes_tab_date")
-        note_type = st.selectbox(
-            "Type",
-            ["LinkedIn", "Email", "Call", "Meeting", "Internal", "Note"],
-            key="notes_tab_type"
+    for c in all_cases[:30]:
+        checked = c["id"] in linked_ids
+        new_checked = st.checkbox(
+            f"{c['title']}  ·  {c.get('industry','')}",
+            value=checked,
+            key=f"case_{c['id']}"
         )
+        if new_checked != checked:
+            link_case(acc_id, c["id"], new_checked)
+            st.rerun()
 
-    with top_r:
-        stage = st.selectbox(
-            "Stage",
-            ["New", "Outreach", "Engaged", "Meeting", "Proposal", "Won", "Lost"],
-            key="notes_tab_stage"
-        )
+# ---- TAB 5: Notes ----
+with tabs[5]:
+    st.subheader("Notes")
 
-    note_text = st.text_area("Add note", height=140, key="notes_tab_text")
+    c1, c2, c3 = st.columns([1, 1, 1])
+    with c1:
+        note_date = st.date_input("Date", value=date.today(), key="notes_date")
+    with c2:
+        note_type = st.selectbox("Type", ["LinkedIn","Email","Call","Meeting","Internal","Note"], key="notes_type")
+    with c3:
+        stage = st.selectbox("Stage", ["New","Outreach","Engaged","Meeting","Proposal","Won","Lost"], key="notes_stage")
 
-    if st.button("Add note", key="notes_tab_add"):
+    note_text = st.text_area("Add note", height=140, key="notes_text")
+
+    if st.button("Add note", key="add_note_btn"):
         if note_text.strip():
             add_note(acc_id, note_date, note_type, stage, note_text.strip())
             st.success("Note added.")
             st.rerun()
-        else:
-            st.warning("Note is empty.")
 
     st.divider()
 
-    # Notes overview (grote read-only viewer)
-    def _local_ts(iso_str: str) -> str:
-        if not iso_str:
+    def _local_ts(ts):
+        if not ts:
             return ""
-        dt = datetime.fromisoformat(iso_str.replace("Z", "+00:00")).astimezone()
-        return dt.strftime("%d-%m-%Y %H:%M")
+        return datetime.fromisoformat(ts.replace("Z","+00:00")).astimezone().strftime("%d-%m-%Y %H:%M")
 
     notes_overview = "\n\n".join([
-        f"{n.get('note_date','')} | {_local_ts(n.get('created_at',''))} | {n.get('note_type','')} | {n.get('stage','')}\n"
-        f"{n.get('content','')}"
+        f"{n.get('note_date')} | {_local_ts(n.get('created_at'))} | {n.get('note_type')} | {n.get('stage')}\n{n.get('content')}"
         for n in notes[:200]
     ]) or "(no notes yet)"
 
-    st.text_area(
-        "Notes overview (newest first)",
-        value=notes_overview,
-        height=520,
-        disabled=True,
-        key="notes_overview_big"
-    )
+    st.text_area("Notes overview", value=notes_overview, height=520, disabled=True)
 
     st.markdown(
-        f"➡️ **Open full-page Notes:** "
-        f"[Open Notes focus](?focus=notes&acc_id={acc_id}) "
-        f"(Ctrl/⌘-click for new tab)"
+        f"[Open Notes full page](?focus=notes&acc_id={acc_id})  (Ctrl/⌘-click)"
     )
 
-
+# ---- TAB 6: Stakeholders ----
 with tabs[6]:
     st.subheader("Stakeholders")
-
     stakeholders_text = st.text_area(
         "Stakeholders",
         value=stakeholders_text,
         height=520,
-        key="stakeholders_text_area"
+        key="stakeholders_tab"
     )
-  with tabs[7]:
+
+# ---- TAB 7: Sales Copilot ----
+with tabs[7]:
     st.subheader("Sales Copilot")
+
     copilot_text = dossier_row.get("copilot_snapshot") or ""
     copilot_text = st.text_area(
-        "Copilot Snapshot (AI-ready, paste output here)",
+        "Copilot Snapshot (paste AI output here)",
         value=copilot_text,
         height=520,
         key="copilot_snapshot_tab"
     )
-
 
     if st.button("Save workspace"):
     save_dossier(
