@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 from supabase import create_client
 from datetime import date, datetime, timezone
 
@@ -14,6 +15,32 @@ def sb():
 db = sb()
 
 # --------- Helpers ----------
+def copy_button(text: str, label: str = "Copy"):
+    safe = text.replace("\\", "\\\\").replace("`", "\\`").replace("${", "\\${")
+    html = f"""
+    <div style="display:flex; justify-content:flex-end; margin-top:4px; margin-bottom:4px;">
+      <button id="copybtn" style="
+        padding:6px 10px; border:1px solid #ccc; border-radius:6px;
+        background:#f7f7f7; cursor:pointer;">
+        {label}
+      </button>
+    </div>
+    <script>
+      const btn = document.getElementById('copybtn');
+      btn.addEventListener('click', async () => {{
+        try {{
+          await navigator.clipboard.writeText(`{safe}`);
+          btn.innerText = 'Copied ✅';
+          setTimeout(() => btn.innerText = '{label}', 1200);
+        }} catch (e) {{
+          btn.innerText = 'Copy failed';
+          setTimeout(() => btn.innerText = '{label}', 1200);
+        }}
+      }});
+    </script>
+    """
+    components.html(html, height=45)
+
 def now_iso():
     return datetime.utcnow().isoformat(timespec="seconds") + "Z"
 import re
@@ -686,17 +713,27 @@ with tabs[5]:
     with c1:
         note_date = st.date_input("Date", value=date.today(), key="notes_date")
     with c2:
-        note_type = st.selectbox("Type", ["LinkedIn","Email","Call","Meeting","Internal","Note"], key="notes_type")
+        note_type = st.selectbox(
+    "Type",
+    ["LinkedIn","Email","Call","Meeting","Internal","Note"],
+    index=5,  # default = Note
+    key="notes_type"
+)
     with c3:
         stage = st.selectbox("Stage", ["New","Outreach","Engaged","Meeting","Proposal","Won","Lost"], key="notes_stage")
 
     note_text = st.text_area("Add note", height=140, key="notes_text")
 
     if st.button("Add note", key="add_note_btn"):
-        if note_text.strip():
-            add_note(acc_id, note_date, note_type, stage, note_text.strip())
-            st.success("Note added.")
-            st.rerun()
+    if note_text.strip():
+        add_note(acc_id, note_date, note_type, stage, note_text.strip())
+
+        # maak inputveld leeg
+        st.session_state["notes_text"] = ""
+
+        st.success("Note added.")
+        st.rerun()
+
 
     st.divider()
 
@@ -710,7 +747,7 @@ with tabs[5]:
         for n in notes[:200]
     ]) or "(no notes yet)"
 
-    st.text_area("Notes overview", value=notes_overview, height=520, disabled=True)
+    st.text_area("Notes overview", value=notes_overview, height=520)
 
     st.markdown(
         f"[Open Notes full page](?focus=notes&acc_id={acc_id})  (Ctrl/⌘-click)"
@@ -729,6 +766,66 @@ with tabs[6]:
 # ---- TAB 7: Sales Copilot ----
 with tabs[7]:
     st.subheader("Sales Copilot")
+        # --- Smart Suggestions (local, no AI) ---
+    st.markdown("### Smart Suggestions (local)")
+
+    inferred_stage = infer_stage_from_data(account.get("status",""), notes)
+    candidates = extract_candidate_actions(notes, max_items=8)
+    gaps = detect_stakeholder_gaps(stakeholders_text)
+    sig = stage_signals(notes, stakeholders_text, linked_cases)
+
+    st.write("**Next best actions (candidates from Notes):**")
+    if candidates:
+        for c in candidates:
+            st.write(f"- {c}")
+    else:
+        st.info("Nog geen duidelijke actie-signalen in Notes. Voeg in je meeting notes expliciet 'Actions:' of 'Next steps:' toe.")
+
+    st.write("**Stakeholder gaps (rollen nog niet duidelijk afgedekt):**")
+    if gaps:
+        for g in gaps:
+            st.write(f"- {g}")
+    else:
+        st.success("Geen evidente stakeholder gaps gedetecteerd (op basis van keywords).")
+
+    st.write(f"**Stage (inferred): {inferred_stage}**")
+    criteria = STAGE_EXIT_CRITERIA.get(inferred_stage, [])
+    if criteria:
+        for c in criteria:
+            # simpele checkmarks o.b.v. signals
+            lc = c.lower()
+            mark = "❓"
+            if "impact" in lc and sig["impact"]:
+                mark = "✅"
+            if ("buying process" in lc or "procurement" in lc) and sig["buying_process"]:
+                mark = "✅"
+            if ("decision criteria" in lc or "success" in lc or "metrics" in lc) and sig["decision_criteria"]:
+                mark = "✅"
+            if ("volgende stap" in lc or "datum" in lc) and sig["next_step_date"]:
+                mark = "✅"
+            if ("champion" in lc) and sig["champion"]:
+                mark = "✅"
+            st.write(f"- {mark} {c}")
+
+    with st.expander("Generate Smart Suggestions prompt (copy/paste to AI)", expanded=False):
+        smart_prompt = build_prompt(
+            "Smart Suggestions",
+            account,
+            {
+                "dossier": dossier_text,
+                "stakeholders": stakeholders_text,
+                "messages": messages_text,
+                "business_scan": scan_text,
+            },
+            notes,
+            linked_cases,
+        )
+
+        c1, c2 = st.columns([6, 1])
+        with c1:
+            st.text_area("Smart Suggestions Prompt", value=smart_prompt, height=260, key="smart_prompt_box")
+        with c2:
+            copy_button(smart_prompt, label="Copy")
 
     copilot_text = dossier_row.get("copilot_snapshot") or ""
     copilot_text = st.text_area(
@@ -770,9 +867,13 @@ prompt = build_prompt(
     linked_cases,
 )
 
-st.text_area("Prompt", value=prompt, height=220)
-ai_out = st.text_area("AI output", height=220)
+c_prompt, c_btn = st.columns([6, 1])
+with c_prompt:
+    st.text_area("Prompt", value=prompt, height=220)
+with c_btn:
+    copy_button(prompt, label="Copy prompt")
 
+ai_out = st.text_area("AI output", height=220)
 if st.button("Apply AI output"):
     if ai_out.strip():
         if mode == "Update dossier":
