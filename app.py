@@ -728,12 +728,11 @@ with tabs[5]:
         if note_text.strip():
         add_note(acc_id, note_date, note_type, stage, note_text.strip())
 
-        # maak inputveld leeg
+        # maak inputveld leeg na opslaan
         st.session_state["notes_text"] = ""
 
         st.success("Note added.")
         st.rerun()
-
 
     st.divider()
 
