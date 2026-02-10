@@ -714,44 +714,50 @@ with tabs[5]:
         note_date = st.date_input("Date", value=date.today(), key="notes_date")
     with c2:
         note_type = st.selectbox(
-    "Type",
-    ["LinkedIn","Email","Call","Meeting","Internal","Note"],
-    index=5,  # default = Note
-    key="notes_type"
-)
+            "Type",
+            ["LinkedIn", "Email", "Call", "Meeting", "Internal", "Note"],
+            index=5,  # default = Note
+            key="notes_type"
+        )
     with c3:
-        stage = st.selectbox("Stage", ["New","Outreach","Engaged","Meeting","Proposal","Won","Lost"], key="notes_stage")
+        stage = st.selectbox(
+            "Stage",
+            ["New", "Outreach", "Engaged", "Meeting", "Proposal", "Won", "Lost"],
+            key="notes_stage"
+        )
 
     note_text = st.text_area("Add note", height=140, key="notes_text")
 
-if st.button("Add note", key="add_note_btn"):
-    if note_text.strip():
-        add_note(acc_id, note_date, note_type, stage, note_text.strip())
+    if st.button("Add note", key="add_note_btn"):
+        if note_text.strip():
+            add_note(acc_id, note_date, note_type, stage, note_text.strip())
 
-        # maak inputveld leeg na opslaan
-        st.session_state["notes_text"] = ""
+            # maak inputveld leeg na opslaan
+            st.session_state["notes_text"] = ""
 
-        st.success("Note added.")
-        st.rerun()
-
+            st.success("Note added.")
+            st.rerun()
 
     st.divider()
 
     def _local_ts(ts):
         if not ts:
             return ""
-        return datetime.fromisoformat(ts.replace("Z","+00:00")).astimezone().strftime("%d-%m-%Y %H:%M")
+        return datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone().strftime("%d-%m-%Y %H:%M")
+
+    # haal notes opnieuw op voor zeker weten (na rerun is dit sowieso ok, maar dit is extra safe)
+    notes_latest = get_notes(acc_id, limit=200)
 
     notes_overview = "\n\n".join([
         f"{n.get('note_date')} | {_local_ts(n.get('created_at'))} | {n.get('note_type')} | {n.get('stage')}\n{n.get('content')}"
-        for n in notes[:200]
+        for n in notes_latest
     ]) or "(no notes yet)"
 
-    st.text_area("Notes overview", value=notes_overview, height=520)
+    # bewust NIET disabled -> niet vervaagd / wél selecteerbaar
+    st.text_area("Notes overview", value=notes_overview, height=520, key="notes_overview_box")
 
-    st.markdown(
-        f"[Open Notes full page](?focus=notes&acc_id={acc_id})  (Ctrl/⌘-click)"
-    )
+    st.markdown(f"[Open Notes full page](?focus=notes&acc_id={acc_id})  (Ctrl/⌘-click)")
+
 
 # ---- TAB 6: Stakeholders ----
 with tabs[6]:
