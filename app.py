@@ -649,9 +649,13 @@ with right:
     if not copilot_preview:
         st.info("No Copilot Snapshot yet. Use the Sales Copilot tab to paste AI output.")
     else:
-        st.text_area("Preview", value=copilot_preview, height=420, disabled=True, key="copilot_preview_right")
-
-   
+        st.text_area(
+    "Preview",
+    value=copilot_preview,
+    height=420,
+    key="copilot_preview_right"
+)
+ 
 
 # --- MIDDLE: Workspace ---
 with middle:
