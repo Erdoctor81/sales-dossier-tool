@@ -521,7 +521,6 @@ with tabs[6]:
     )
   with tabs[7]:
     st.subheader("Sales Copilot")
-
     copilot_text = dossier_row.get("copilot_snapshot") or ""
     copilot_text = st.text_area(
         "Copilot Snapshot (AI-ready, paste output here)",
