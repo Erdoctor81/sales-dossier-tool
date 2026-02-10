@@ -543,7 +543,7 @@ with st.sidebar:
             d = get_dossier(new_acc_id)
             if not d.get("dossier"):
                 seeded = DEFAULT_DOSSIER_TEMPLATE.format(account_name=name.strip())
-                save_dossier(new_acc_id, seeded, "", "", "",")
+                save_dossier(new_acc_id, seeded, "", "", "", "")
             st.success("Saved.")
             st.rerun()
 
