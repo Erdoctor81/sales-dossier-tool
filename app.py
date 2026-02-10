@@ -81,12 +81,13 @@ def get_dossier(acc_id):
     db.table("dossiers").insert({"account_id": acc_id, "updated_at": now_iso()}).execute()
     return db.table("dossiers").select("*").eq("account_id", acc_id).single().execute().data
 
-def save_dossier(acc_id, dossier, stakeholders, messages, business_scan):
+def save_dossier(acc_id, dossier, stakeholders, messages, business_scan, copilot_snapshot):
     db.table("dossiers").update({
         "dossier": dossier,
         "stakeholders": stakeholders,
         "messages": messages,
         "business_scan": business_scan,
+        "copilot_snapshot": copilot_snapshot,
         "updated_at": now_iso()
     }).eq("account_id", acc_id).execute()
     db.table("accounts").update({"updated_at": now_iso()}).eq("id", acc_id).execute()
@@ -391,7 +392,23 @@ if qp.get("focus") == "notes" and qp.get("acc_id") == str(acc_id):
 
 # --- RIGHT: General / Notes ---
 with right:
-    st.subheader("General")
+    with right:
+    st.subheader("Copilot Snapshot")
+
+    # Compacte account snapshot (read-only)
+    st.caption(f"{account.get('industry','')} · {account.get('segment','')} · {account.get('geography','')}")
+    st.write(f"**Status:** {account.get('status','')}  |  **Priority:** {account.get('priority','')}")
+    if account.get("next_action"):
+        st.write(f"**Next action:** {account.get('next_action')}")
+
+    st.divider()
+
+    # Read-only preview uit dezelfde tekst als in Sales Copilot tab
+    copilot_preview = (dossier_row.get("copilot_snapshot") or "").strip()
+    if not copilot_preview:
+        st.info("No Copilot Snapshot yet. Use the Sales Copilot tab to paste AI output.")
+    else:
+        st.text_area("Preview", value=copilot_preview, height=420, disabled=True, key="copilot_preview_right")
 
    
 
@@ -503,10 +520,28 @@ with tabs[6]:
         height=520,
         key="stakeholders_text_area"
     )
+  with tabs[7]:
+    st.subheader("Sales Copilot")
+
+    copilot_text = dossier_row.get("copilot_snapshot") or ""
+    copilot_text = st.text_area(
+        "Copilot Snapshot (AI-ready, paste output here)",
+        value=copilot_text,
+        height=520,
+        key="copilot_snapshot_tab"
+    )
+
 
     if st.button("Save workspace"):
-        save_dossier(acc_id, dossier_text, stakeholders_text, messages_text, scan_text)
-        st.success("Saved.")
+    save_dossier(
+        acc_id,
+        dossier_text,
+        stakeholders_text,
+        messages_text,
+        scan_text,
+        copilot_text if "copilot_text" in locals() else (dossier_row.get("copilot_snapshot") or "")
+    )
+    st.success("Saved.")
 
 # --- AI Copy / Paste ---
 st.divider()
