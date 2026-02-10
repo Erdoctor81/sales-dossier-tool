@@ -352,19 +352,20 @@ with left:
     }
     pick = st.selectbox("Select account", list(label_to_id.keys()))
     acc_id = label_to_id[pick]
-    account = get_account(acc_id)
-    dossier_row = get_dossier(acc_id)
-    notes = get_notes(acc_id)
-    linked_cases = get_linked_cases(acc_id)
-    st.divider()
-    st.subheader("Dossier")
 
-    dossier_text = st.text_area(
-        "Dossier",
-        value=dossier_row.get("dossier") or "",
-        height=420,
-        key="dossier_left"
-)
+# --- Load account data (OUTSIDE left) ---
+account = get_account(acc_id)
+dossier_row = get_dossier(acc_id)
+notes = get_notes(acc_id)
+linked_cases = get_linked_cases(acc_id)
+
+# --- Initialize editable fields once ---
+dossier_text = dossier_row.get("dossier") or ""
+stakeholders_text = dossier_row.get("stakeholders") or ""
+messages_text = dossier_row.get("messages") or ""
+scan_text = dossier_row.get("business_scan") or ""
+copilot_text = dossier_row.get("copilot_snapshot") or ""
+
 
 
 # --- Shared data (SAFE: acc_id is guaranteed here) ---
