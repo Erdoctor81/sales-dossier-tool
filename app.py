@@ -543,7 +543,7 @@ with st.sidebar:
             d = get_dossier(new_acc_id)
             if not d.get("dossier"):
                 seeded = DEFAULT_DOSSIER_TEMPLATE.format(account_name=name.strip())
-                save_dossier(new_acc_id, seeded, "", "", "")
+                save_dossier(new_acc_id, seeded, "", "", "",")
             st.success("Saved.")
             st.rerun()
 
@@ -781,10 +781,23 @@ if st.button("Apply AI output"):
             stakeholders_text = ai_out.strip()
         elif mode == "Message pack":
             messages_text = ai_out.strip()
+        elif mode == "Business scan":
+            scan_text = ai_out.strip()
+        elif mode == "Smart Suggestions":
+            # Zet AI output direct in Copilot Snapshot
+            copilot_text = ai_out.strip()
         else:
             scan_text = ai_out.strip()
 
-        save_dossier(acc_id, dossier_text, stakeholders_text, messages_text, scan_text)
+        save_dossier(
+            acc_id,
+            dossier_text,
+            stakeholders_text,
+            messages_text,
+            scan_text,
+            copilot_text
+        )
         st.success("Applied.")
         st.rerun()
+
 
