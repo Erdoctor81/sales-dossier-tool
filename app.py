@@ -16,6 +16,124 @@ db = sb()
 # --------- Helpers ----------
 def now_iso():
     return datetime.utcnow().isoformat(timespec="seconds") + "Z"
+import re
+
+ACTION_CUES = [
+    "follow up", "follow-up", "opvolg", "stuur", "send", "mail", "email", "deel",
+    "plan", "afspraak", "meeting", "call", "demo", "proposal", "offerte",
+    "security", "legal", "procurement", "inkoop", "budget", "pricing", "prijs",
+    "stakeholder", "beslisser", "decision", "timeline", "deadline", "next step",
+    "volgende stap", "actie", "to do", "todo"
+]
+
+ROLE_KEYWORDS = {
+    "economic_buyer": ["ceo", "cfo", "directeur", "vp", "md", "gm", "budget owner", "eigenaar"],
+    "champion": ["champion", "sponsor", "voorvechter", "ambassadeur"],
+    "technical_buyer": ["it", "cto", "architect", "security", "ciso", "infra", "integratie"],
+    "user_lead": ["operations", "manager", "teamlead", "hoofd", "super user", "key user", "operatie"],
+    "procurement": ["procurement", "inkoop", "purchasing", "vendor", "contract"],
+    "legal": ["legal", "juridisch", "privacy", "dpa", "msa", "contract"],
+}
+
+DEFAULT_ROLES_CHECKLIST = [
+    ("Economic Buyer", "economic_buyer"),
+    ("Champion / Sponsor", "champion"),
+    ("Technical Buyer (IT/Security)", "technical_buyer"),
+    ("User Lead (Operations)", "user_lead"),
+    ("Procurement / Inkoop", "procurement"),
+    ("Legal / Privacy", "legal"),
+]
+
+STAGE_EXIT_CRITERIA = {
+    "New": [
+        "ICP fit helder (wie/waarom nu?)",
+        "Eerste outreach + reactie of signaal van interesse",
+    ],
+    "Outreach": [
+        "Eerste gesprek gepland of warm intro gevraagd",
+        "Probleem/pijn hypothese gedeeld + bevestigd/ontkracht",
+    ],
+    "Engaged": [
+        "Discovery gedaan: pijn + impact + stakeholders",
+        "Volgende stap afgesproken met datum",
+    ],
+    "Meeting": [
+        "Buying process duidelijk (stappen + timing)",
+        "Decision criteria + success metrics helder",
+        "Champion geïdentificeerd (of plan om te vinden)",
+    ],
+    "Proposal": [
+        "Scope + prijs + ROI/impact afgestemd",
+        "Procurement/legal/security pad bekend",
+        "Mutual Action Plan met deadlines",
+    ],
+}
+
+def _norm(s: str) -> str:
+    return (s or "").lower().strip()
+
+def extract_candidate_actions(notes, max_items=8):
+    """
+    Heuristiek: pak zinnen/bullets uit recente notes met action cues.
+    Output: list[str]
+    """
+    items = []
+    for n in notes[:25]:
+        txt = (n.get("content") or "").strip()
+        if not txt:
+            continue
+
+        lines = [l.strip(" -•\t") for l in re.split(r"[\n\r]+", txt) if l.strip()]
+        for line in lines:
+            ln = _norm(line)
+            if any(cue in ln for cue in ACTION_CUES):
+                d = n.get("note_date") or ""
+                items.append(f"[{d}] {line}")
+                if len(items) >= max_items:
+                    return items
+    return items
+
+def stakeholder_coverage(stakeholders_text: str):
+    stxt = _norm(stakeholders_text)
+    cov = {}
+    for role_key, kws in ROLE_KEYWORDS.items():
+        cov[role_key] = any(kw in stxt for kw in kws)
+    return cov
+
+def detect_stakeholder_gaps(stakeholders_text: str):
+    cov = stakeholder_coverage(stakeholders_text)
+    gaps = []
+    for label, key in DEFAULT_ROLES_CHECKLIST:
+        if not cov.get(key, False):
+            gaps.append(label)
+    return gaps
+
+def infer_stage_from_data(account_status: str, notes):
+    status = (account_status or "").strip() or "New"
+    recent = _norm(" ".join([
+        (n.get("note_type") or "") + " " + (n.get("stage") or "") + " " + (n.get("content") or "")
+        for n in notes[:10]
+    ]))
+
+    if "proposal" in recent or "offerte" in recent:
+        return "Proposal"
+    if "meeting" in recent or "demo" in recent or "call" in recent:
+        return "Meeting"
+    return status
+
+def stage_signals(notes, stakeholders_text, linked_cases):
+    blob = _norm(
+        " ".join([(n.get("content") or "") for n in notes[:25]]) + " " +
+        (stakeholders_text or "") + " " +
+        " ".join([(c.get("content") or "") for c in linked_cases])
+    )
+    return {
+        "impact": any(k in blob for k in ["impact", "€", "eur", "kpi", "besparing", "efficiency", "risico", "risk"]),
+        "buying_process": any(k in blob for k in ["procurement", "inkoop", "legal", "security", "dpa", "msa", "proces", "tender"]),
+        "decision_criteria": any(k in blob for k in ["criteria", "succes", "success", "must have", "requirements", "eisen"]),
+        "next_step_date": any(k in blob for k in ["volgende week", "next week", "afspraak", "gepland", "calendar", "uitnodiging", "datum"]),
+        "champion": any(k in _norm(stakeholders_text) for k in ROLE_KEYWORDS["champion"]),
+    }
 
 DEFAULT_DOSSIER_TEMPLATE = """# Account Dossier — {account_name}
 
@@ -170,7 +288,103 @@ def build_prompt(mode, account, dossier_row, notes, linked_cases):
     cases_block = "\n\n".join([f"CASE: {c['title']}\nIndustry: {c.get('industry','')}\nTags: {c.get('tags','')}\n{c['content']}" for c in linked_cases]) or "(none)"
 
     today = date.today().isoformat()
+    if mode == "Smart Suggestions":
+        candidates = extract_candidate_actions(notes, max_items=8)
+        gaps = detect_stakeholder_gaps(stakeholders_text)
+        inferred_stage = infer_stage_from_data(account.get("status",""), notes)
+        sig = stage_signals(notes, stakeholders_text, linked_cases)
 
+        candidates_block = "\n".join([f"- {c}" for c in candidates]) or "- (none found)"
+        gaps_block = "\n".join([f"- {g}" for g in gaps]) or "- (no obvious gaps)"
+
+        criteria = STAGE_EXIT_CRITERIA.get(inferred_stage, [])
+        criteria_lines = []
+        for c in criteria:
+            lc = c.lower()
+            mark = "❓"
+            if "impact" in lc and sig["impact"]:
+                mark = "✅"
+            if ("buying process" in lc or "procurement" in lc) and sig["buying_process"]:
+                mark = "✅"
+            if ("decision criteria" in lc or "success" in lc or "metrics" in lc) and sig["decision_criteria"]:
+                mark = "✅"
+            if ("volgende stap" in lc or "datum" in lc) and sig["next_step_date"]:
+                mark = "✅"
+            if ("champion" in lc) and sig["champion"]:
+                mark = "✅"
+            criteria_lines.append(f"- {mark} {c}")
+        criteria_block = "\n".join(criteria_lines) or "- (no criteria for this stage)"
+
+        return f"""ROLE
+You are my B2B sales copilot. Be concrete and specific. No generic advice.
+
+ACCOUNT
+- Name: {account.get('name','')}
+- Industry: {account.get('industry','')}
+- Segment: {account.get('segment','')}
+- Geography: {account.get('geography','')}
+- Current Status: {account.get('status','')}
+- Inferred Stage: {inferred_stage}
+
+DOSSIER (context)
+<<<
+{dossier_text}
+>>>
+
+STAKEHOLDERS (raw)
+<<<
+{stakeholders_text}
+>>>
+
+NOTES (newest first)
+<<<
+{notes_block}
+>>>
+
+LINKED CASES (optional)
+<<<
+{cases_block}
+>>>
+
+LOCAL SIGNALS (from heuristics)
+Candidate actions found:
+{candidates_block}
+
+Stakeholder gaps (roles not clearly covered):
+{gaps_block}
+
+Stage exit criteria check ({inferred_stage}):
+{criteria_block}
+
+GOAL
+Generate Smart Suggestions to progress the account.
+
+OUTPUT FORMAT (4 sections)
+1) NEXT BEST ACTIONS (max 5)
+- Title (imperative)
+- Why now (1 line)
+- Evidence (quote or reference from notes/signals)
+- Priority (H/M/L)
+- Owner (Me/Customer)
+- Suggested due date
+
+2) QUESTIONS FOR NEXT MEETING (max 10)
+Group by: Pain/Impact, Process, People, Timing/Risk.
+For each question: Intent (what it validates)
+
+3) STAKEHOLDER GAPS
+- Missing roles + risk if missing
+- How to ask for introduction (1–2 suggested lines)
+
+4) ACCOUNT PROGRESSION
+- Current stage confidence (0–100%)
+- What is missing to move 1 stage forward (top 3)
+- Suggested next milestone + mutual action plan bullets
+
+RULES
+- Base everything on the inputs. If something is missing, label it as ASSUMPTION + add a validation question.
+- Keep it crisp, scannable bullets.
+"""
     if mode == "Update dossier":
         return f"""ROLE
 You are my sales assistant. Think proactively and stay structured.
@@ -539,7 +753,10 @@ with tabs[7]:
 st.divider()
 st.subheader("AI Copy / Paste")
 
-mode = st.selectbox("Generate prompt for", ["Update dossier", "Stakeholders", "Message pack", "Business scan"])
+mode = st.selectbox(
+    "Generate prompt for",
+    ["Smart Suggestions", "Update dossier", "Stakeholders", "Message pack", "Business scan"]
+)
 prompt = build_prompt(
     mode,
     account,
